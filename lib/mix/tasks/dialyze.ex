@@ -204,22 +204,13 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp find_beam(module) do
-    case :code.which(module) do
+    beam = Atom.to_char_list(module) ++ '.beam'
+    case :code.where_is_file(beam) do
       path when is_list(path) ->
         Path.expand(path)
-      :preloaded ->
-        find_preloaded(module)
-      :cover_compiled ->
-        Mix.raise "#{inspect(module)} is cover compiled"
       :non_existing ->
         Mix.raise "#{inspect(module)} could not be found"
     end
-  end
-
-  defp find_preloaded(module) do
-    beam = Atom.to_char_list(module) ++ '.beam'
-    :code.where_is_file(beam)
-      |> Path.expand()
   end
 
   defp check_beams(beams, plt) do

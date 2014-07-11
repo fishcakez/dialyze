@@ -1,4 +1,7 @@
-dialyze
-=======
+Mix.Task.Dialyze
+================
 
-Mix dialyzer task
+Install the repo as local mix task and run the following on a project:
+```
+mix dialyze
+```

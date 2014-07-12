@@ -54,11 +54,11 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plts_list(deps) do
-    [{base_plt(), [:erts, :kernel, :stdlib]}, {elixir_plt(), [:elixir]},
+    [{erlang_plt(), [:erts, :kernel, :stdlib]}, {elixir_plt(), [:elixir]},
      {deps_plt(), deps}]
   end
 
-  defp base_plt(), do: global_plt("base-" <> otp_vsn())
+  defp erlang_plt(), do: global_plt("erlang-" <> otp_vsn())
 
   defp otp_vsn() do
     major = :erlang.system_info(:otp_release)
@@ -79,7 +79,15 @@ defmodule Mix.Tasks.Dialyze do
 
   defp elixir_plt(), do: global_plt("elixir-" <> System.version())
 
-  defp deps_plt, do: local_plt("deps")
+  defp deps_plt, do: local_plt("deps-" <> build_env())
+
+  defp build_env() do
+    config = Mix.Project.config()
+    case Keyword.fetch!(config, :build_per_environment) do
+      true -> Atom.to_string(Mix.env())
+      false -> "shared"
+    end
+  end
 
   defp global_plt(name) do
     Path.join(Mix.Utils.mix_home(), "dialyze_" <> name <> ".plt")
@@ -219,16 +227,12 @@ defmodule Mix.Tasks.Dialyze do
     plt_remove(plt, remove)
     add = HashSet.difference(beams, old)
     plt_add(plt, add)
-    case HashSet.size(beams) === HashSet.size(add) do
-      ## All beams just added, no need to check
-      true ->
-        :ok
-      false ->
-        plt_check(plt)
-    end
+    remain = HashSet.intersection(old, beams)
+    plt_check(plt, remain)
   end
 
   defp plt_new(plt) do
+    Mix.Shell.IO.info("Creating #{Path.basename(plt)}")
     plt = erl_path(plt)
     _ = :dialyzer.run([analysis_type: :plt_build, output_plt: plt,
       apps: [:erts]])
@@ -236,11 +240,13 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_add(plt, files) do
-    plt = erl_path(plt)
-    case plt_files(files) do
-      [] ->
+    case HashSet.size(files) do
+      0 ->
         :ok
-      files ->
+      n ->
+        Mix.Shell.IO.info("Adding #{n} modules to #{Path.basename(plt)}")
+        plt = erl_path(plt)
+        files = plt_files(files)
         _ = :dialyzer.run([analysis_type: :plt_add, init_plt: plt,
           files: files])
         :ok
@@ -248,26 +254,41 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_remove(plt, files) do
-    plt = erl_path(plt)
-    case plt_files(files) do
-      [] ->
+    case HashSet.size(files) do
+      0 ->
         :ok
-      files ->
+      n ->
+        Mix.Shell.IO.info("Removing #{n} modules from #{Path.basename(plt)}")
+        plt = erl_path(plt)
+        files = plt_files(files)
         _ = :dialyzer.run([analysis_type: :plt_remove, init_plt: plt,
           files: files])
         :ok
     end
   end
 
-  defp plt_check(plt) do
-    plt = erl_path(plt)
-    _ = :dialyzer.run([analysis_type: :plt_check, init_plt: plt])
+  defp plt_check(plt, files) do
+    case HashSet.size(files) do
+      0 ->
+        :ok
+      n ->
+        Mix.Shell.IO.info("Checking #{n} modules in #{Path.basename(plt)}")
+        plt = erl_path(plt)
+        _ = :dialyzer.run([analysis_type: :plt_check, init_plt: plt])
+    end
   end
 
   defp plts_run(plts, files) do
-    plts = Enum.map(plts, &erl_path/1)
-    files = Enum.map(files, &erl_path/1)
-    :dialyzer.run([analysis_type: :succ_typings, plts: plts, files: files])
+    case HashSet.size(files) do
+      0 ->
+        []
+      n ->
+        plts_text = (Enum.map(plts, &Path.basename/1) |> Enum.join(" "))
+        Mix.Shell.IO.info("Analysing #{n} modules with #{plts_text}")
+        plts = Enum.map(plts, &erl_path/1)
+        files = Enum.map(files, &erl_path/1)
+        :dialyzer.run([analysis_type: :succ_typings, plts: plts, files: files])
+    end
   end
 
   defp plt_info(plt) do

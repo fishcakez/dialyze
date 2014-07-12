@@ -162,8 +162,6 @@ defmodule Mix.Tasks.Dialyze do
   defp app_info(app) do
     app_file = Atom.to_char_list(app) ++ '.app'
     case :code.where_is_file(app_file) do
-      {:error, :bad_name} ->
-        Mix.raise "Could not find #{app_file}"
       :non_existing ->
         Mix.raise "Could not find #{app_file}"
       app_file ->

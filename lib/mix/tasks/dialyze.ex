@@ -77,9 +77,14 @@ defmodule Mix.Tasks.Dialyze do
     end
   end
 
-  defp elixir_plt(), do: global_plt("elixir-" <> System.version())
+  defp elixir_plt() do
+    global_plt("elixir-#{System.version()}_erlang-#{otp_vsn()}")
+  end
 
-  defp deps_plt, do: local_plt("deps-" <> build_env())
+  defp deps_plt do
+    name = "deps-#{build_env()}_elixir-#{System.version()}_erlang-#{otp_vsn()}"
+    local_plt(name)
+  end
 
   defp build_env() do
     config = Mix.Project.config()

@@ -230,7 +230,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_new(plt) do
-    Mix.Shell.IO.info("Creating #{Path.basename(plt)}")
+    (Mix.shell()).info("Creating #{Path.basename(plt)}")
     plt = erl_path(plt)
     _ = :dialyzer.run([analysis_type: :plt_build, output_plt: plt,
       apps: [:erts]])
@@ -242,7 +242,7 @@ defmodule Mix.Tasks.Dialyze do
       0 ->
         :ok
       n ->
-        Mix.Shell.IO.info("Adding #{n} modules to #{Path.basename(plt)}")
+        (Mix.shell()).info("Adding #{n} modules to #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = plt_files(files)
         _ = :dialyzer.run([analysis_type: :plt_add, init_plt: plt,
@@ -256,7 +256,7 @@ defmodule Mix.Tasks.Dialyze do
       0 ->
         :ok
       n ->
-        Mix.Shell.IO.info("Removing #{n} modules from #{Path.basename(plt)}")
+        (Mix.shell()).info("Removing #{n} modules from #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = plt_files(files)
         _ = :dialyzer.run([analysis_type: :plt_remove, init_plt: plt,
@@ -270,7 +270,7 @@ defmodule Mix.Tasks.Dialyze do
       0 ->
         :ok
       n ->
-        Mix.Shell.IO.info("Checking #{n} modules in #{Path.basename(plt)}")
+        (Mix.shell()).info("Checking #{n} modules in #{Path.basename(plt)}")
         plt = erl_path(plt)
         _ = :dialyzer.run([analysis_type: :plt_check, init_plt: plt])
     end
@@ -282,7 +282,7 @@ defmodule Mix.Tasks.Dialyze do
         []
       n ->
         plts_text = (Enum.map(plts, &Path.basename/1) |> Enum.join(" "))
-        Mix.Shell.IO.info("Analysing #{n} modules with #{plts_text}")
+        (Mix.shell()).info("Analysing #{n} modules with #{plts_text}")
         plts = Enum.map(plts, &erl_path/1)
         files = Enum.map(files, &erl_path/1)
         :dialyzer.run([analysis_type: :succ_typings, plts: plts, files: files])
@@ -318,7 +318,7 @@ defmodule Mix.Tasks.Dialyze do
 
   defp print_warnings(warnings) do
     _ = for warning <- warnings do
-      Mix.Shell.IO.error(format_warning(warning))
+      (Mix.shell()).error(format_warning(warning))
     end
     :ok
   end

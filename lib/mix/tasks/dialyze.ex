@@ -104,14 +104,14 @@ defmodule Mix.Tasks.Dialyze do
 
   defp run(plts, mods, plts_cache) do
     plts_mods = Enum.into(cache_mod_diff(plts_cache, %{}), HashSet.new())
-    collisions = HashSet.intersection(plts_mods, Enum.into(mods, HashSet.new()))
-    case HashSet.size(collisions) do
+    clashes = HashSet.intersection(plts_mods, Enum.into(mods, HashSet.new()))
+    case HashSet.size(clashes) do
       0 ->
         files = resolve_beams(mods)
         plts_run(plts, files)
       _ ->
-        Mix.raise "Collisions with plts: " <>
-          inspect(HashSet.to_list(collisions))
+        Mix.raise "Clashes with plts: " <>
+          inspect(HashSet.to_list(clashes))
     end
   end
 
@@ -130,6 +130,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp check(plt, apps, old_cache) do
+    (Mix.shell()).info("Checking #{Path.basename(plt)}")
     new_cache = resolve_modules(apps, old_cache)
     cache_mod_diff(new_cache, old_cache)
       |> resolve_beams()
@@ -159,16 +160,12 @@ defmodule Mix.Tasks.Dialyze do
     end
   end
 
-  ## ignore hipe
-  defp app_info(:hipe) do
-    {:hipe, {[], []}}
-  end
-
   defp app_info(app) do
     app_file = Atom.to_char_list(app) ++ '.app'
     case :code.where_is_file(app_file) do
       :non_existing ->
-        Mix.raise "Could not find #{app_file}"
+        (Mix.shell()).error("Unknown application #{inspect(app)}")
+        {app, {[], []}}
       app_file ->
         Path.expand(app_file)
         |> read_app_info(app)
@@ -179,10 +176,8 @@ defmodule Mix.Tasks.Dialyze do
     case :file.consult(app_file) do
       {:ok, [{:application, ^app, info}]} ->
         parse_app_info(info, app)
-      {:ok, _} ->
-        Mix.raise "Could not parse #{app_file}"
-      _other ->
-        Mix.raise "Could not read #{app_file}"
+      {:error, reason} ->
+        Mix.raise "Could not read #{app_file}: #{:file.format_error(reason)}"
     end
   end
 
@@ -211,16 +206,20 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp resolve_beams(module, set) do
-    HashSet.put(set, find_beam(module))
+    case find_beam(module) do
+      path when is_binary(path) ->
+        HashSet.put(set, path)
+      :non_existing ->
+        (Mix.shell()).error("Unknown module #{inspect(module)}")
+        set
+    end
   end
 
   defp find_beam(module) do
     beam = Atom.to_char_list(module) ++ '.beam'
     case :code.where_is_file(beam) do
-      path when is_list(path) ->
-        Path.expand(path)
-      :non_existing ->
-        Mix.raise "#{inspect(module)} could not be found"
+      path when is_list(path) -> Path.expand(path)
+      :non_existing -> :non_existing
     end
   end
 

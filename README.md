@@ -14,7 +14,7 @@ For Elixir < 0.14.3
 ```
 git clone https://github.com/fishcakez/dialyze.git
 cd dialyze
-mix do compile, local.install --force
+mix do compile, archive, local.install --force
 ```
 
 Usage

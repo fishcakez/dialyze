@@ -4,7 +4,7 @@ defmodule Dialyze.Mixfile do
   def project do
     [app: :dialyze,
      version: "0.0.1",
-     elixir: "~> 0.14.2",
+     elixir: "~> 0.14.0",
      deps: deps,
      aliases: [install: ["compile", "archive.install --force"]]]
   end

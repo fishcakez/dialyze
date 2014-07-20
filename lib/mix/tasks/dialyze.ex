@@ -1,11 +1,13 @@
 defmodule Mix.Tasks.Dialyze do
 
+  @warnings [:unmatched_returns, :error_handling, :race_conditions, :underspecs]
+
   def run(args) do
-    {mods, deps} = get_info()
-    prepare = prepare_fun(args)
+    {make, prepare, analysis, warnings} = parse_args(args)
+    {mods, deps} = get_info(make)
     try do
       {plts, cache} = ( plts_list(deps) |> prepare.() )
-      run(plts, mods, cache)
+      analysis.(plts, mods, cache, warnings)
     else
       warnings ->
         print_warnings(warnings)
@@ -15,8 +17,45 @@ defmodule Mix.Tasks.Dialyze do
     end
   end
 
-  defp get_info() do
-    infos = app_info_list()
+  defp parse_args(args) do
+    warn_switches = Enum.map(@warnings, &{&1, :boolean})
+    switches = [compile: :boolean, check: :boolean, analyse: :boolean] ++
+      warn_switches
+    {opts, _, _} = OptionParser.parse(args, [strict: switches])
+    {make_fun(opts), prepare_fun(opts), analysis_fun(opts), warnings_list(opts)}
+  end
+
+  defp make_fun(opts) do
+    case Keyword.get(opts, :compile, true) do
+      true -> &compile/0
+      false -> &no_compile/0
+    end
+  end
+
+  defp prepare_fun(opts) do
+    case Keyword.get(opts, :check, true) do
+      true -> &check/1
+      false -> &no_check/1
+    end
+  end
+
+  defp analysis_fun(opts) do
+    case Keyword.get(opts, :analyse, true) do
+      true -> &analyse/4
+      false -> &no_analyse/4
+    end
+  end
+
+  defp warnings_list(opts) do
+    Enum.filter(@warnings, &Keyword.get(opts, &1, false))
+  end
+
+  defp no_compile(), do: :ok
+
+  defp compile(), do: Mix.Task.run("compile", [])
+
+  defp get_info(make) do
+    infos = app_info_list(make)
     apps = Keyword.keys(infos)
     mods = Enum.flat_map(infos, fn({_, {mods, _deps}}) -> mods end)
     deps = Enum.flat_map(infos, fn({_, {_mods, deps}}) -> deps end)
@@ -24,33 +63,25 @@ defmodule Mix.Tasks.Dialyze do
     {mods, Enum.uniq(deps) -- apps}
   end
 
-  defp app_info_list() do
+  defp app_info_list(make) do
     case Mix.Project.umbrella?() do
-      true -> get_umbrella_info()
-      false -> [get_app_info()]
+      true -> get_umbrella_info(make)
+      false -> [get_app_info(make)]
     end
   end
 
-  defp get_umbrella_info() do
+  defp get_umbrella_info(make) do
     config = [build_path: Mix.Project.build_path()]
     for %Mix.Dep{app: app, opts: opts} <- Mix.Dep.Umbrella.loaded() do
       path = opts[:path]
-      Mix.Project.in_project(app, path, config, fn(_) -> get_app_info() end)
+      Mix.Project.in_project(app, path, config, fn(_) -> get_app_info(make) end)
     end
   end
 
-  defp get_app_info() do
-    Mix.Task.run("compile", [])
+  defp get_app_info(make) do
+    make.()
     Keyword.fetch!(Mix.Project.config(), :app)
       |> app_info()
-  end
-
-  defp prepare_fun(args) do
-    {opts, _, _} = OptionParser.parse(args, switches: [check: :boolean])
-    case Keyword.get(opts, :check, true) do
-      true -> &check/1
-      false -> &ensure/1
-    end
   end
 
   defp plts_list(deps) do
@@ -102,26 +133,26 @@ defmodule Mix.Tasks.Dialyze do
     Path.join(Mix.Project.build_path(), "dialyze_" <> name <> ".plt")
   end
 
-  defp run(plts, mods, plts_cache) do
+
+  defp no_analyse(_plts, _mods, _plts_cache, _warnings), do: []
+
+  defp analyse(plts, mods, plts_cache, warnings) do
+    (Mix.shell()).info("Finding modules for analysis")
     plts_mods = Enum.into(cache_mod_diff(plts_cache, %{}), HashSet.new())
     clashes = HashSet.intersection(plts_mods, Enum.into(mods, HashSet.new()))
     case HashSet.size(clashes) do
       0 ->
         files = resolve_beams(mods)
-        plts_run(plts, files)
+        plts_run(plts, files, warnings)
       _ ->
         Mix.raise "Clashes with plts: " <>
           inspect(HashSet.to_list(clashes))
     end
   end
 
-  defp ensure(plts) do
-    case Enum.all?(plts, fn({plt, _apps}) -> File.regular?(plt) end) do
-      true ->
-        {plt_list, _apps} = :lists.unzip(plts)
-        {plt_list, %{}}
-      false -> check(plts)
-    end
+  defp no_check(plts) do
+    plt_list = Enum.map(plts, fn({plt, _apps}) -> plt end)
+    {plt_list, %{}}
   end
 
   defp check(plts) do
@@ -130,7 +161,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp check(plt, apps, old_cache) do
-    (Mix.shell()).info("Checking #{Path.basename(plt)}")
+    (Mix.shell()).info("Finding modules for #{Path.basename(plt)}")
     new_cache = resolve_modules(apps, old_cache)
     cache_mod_diff(new_cache, old_cache)
       |> resolve_beams()
@@ -280,7 +311,7 @@ defmodule Mix.Tasks.Dialyze do
     end
   end
 
-  defp plts_run(plts, files) do
+  defp plts_run(plts, files, warnings) do
     case HashSet.size(files) do
       0 ->
         []
@@ -289,7 +320,8 @@ defmodule Mix.Tasks.Dialyze do
         (Mix.shell()).info("Analysing #{n} modules with #{plts_text}")
         plts = Enum.map(plts, &erl_path/1)
         files = Enum.map(files, &erl_path/1)
-        :dialyzer.run([analysis_type: :succ_typings, plts: plts, files: files])
+        :dialyzer.run([analysis_type: :succ_typings, plts: plts, files: files,
+          warnings: warnings])
     end
   end
 

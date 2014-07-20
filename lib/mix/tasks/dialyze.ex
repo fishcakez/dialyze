@@ -308,6 +308,7 @@ defmodule Mix.Tasks.Dialyze do
         (Mix.shell()).info("Checking #{n} modules in #{Path.basename(plt)}")
         plt = erl_path(plt)
         _ = :dialyzer.run([analysis_type: :plt_check, init_plt: plt])
+        :ok
     end
   end
 
@@ -354,7 +355,8 @@ defmodule Mix.Tasks.Dialyze do
 
   defp print_warnings(warnings) do
     _ = for warning <- warnings do
-      (Mix.shell()).error(format_warning(warning))
+      _ = (Mix.shell()).error(format_warning(warning))
+      :ok
     end
     :ok
   end

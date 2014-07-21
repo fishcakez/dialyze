@@ -23,13 +23,13 @@ Carry out success typing analysis on any mix project:
 ```
 mix dialyze
 ```
-To just check the PLTs and skip success typing analysis:
+To just check the PLT and skip success typing analysis:
 ```
 mix dialyze --no-analyse
 ```
-On subsequent calls for the same project checking the PLTs can be
+On subsequent calls for the same project checking the PLT can be
 skipped. This should only be done if the build environment's
-dependencies have not changed since the PLTs were last checked:
+dependencies have not changed since the PLT were last checked:
 ```
 mix dialyze --no-check
 ```

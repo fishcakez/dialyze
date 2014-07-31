@@ -1,7 +1,65 @@
 defmodule Mix.Tasks.Dialyze do
+  @moduledoc """
+  Analyse the current mix project using success typing.
+
+  ## Examples
+
+      # Build or check a PLT and use it to analysis a project
+      mix dialyze
+
+      # Use the existing PLT to analysis a project
+      mix dialyze --no-check
+
+      # Build or check the PLT for current environment but don't analyse
+      mix dialyze --no-analyse
+
+      # Skip compiling the project
+      mix dialyze --no-compile
+
+      # Find extra warnings during analysis
+      mix dialyze --unmatched-returns --error-handling --race-conditions --underspecs
+
+  The `--no-check` switch should only be used when the PLT for the current
+  build environment (including Erlang and Elixir) has been checked, and
+  no changes have been made to dependencies (including Erlang and Elixir). It is
+  not required to check the PLT even if changes are made to dependencies but the
+  success typing analysis will be less accurate and may make incorrect warnings.
+
+  Below is a common pattern of use:
+
+  ## Examples
+
+      # Fetch deps
+      mix deps.get
+      # Possibly make changes to current application and then compile project
+      mix compile
+      # Run dialyze for the first time to build a PLT and analyse
+      mix dialyze
+      # Fix dialyzer warnings and analyse again (assuming same build
+      # environment, Elixir version, Erlang version and deps)
+      mix dialyze --no-check
+
+  This task will automatically find all dependencies for the current build
+  environment and add them to a PLT. The most common dependencies from
+  Erlang/OTP and Elixir will be cached for each version of Erlang and Elixir and
+  re-used between projects. If a PLT exists for the active versions of Erlang
+  and Elixir, and the current build environment the PLT will be checked for
+  consistency before analysis.
+
+  This task tries to be as efficient as possible in reusing PLTs. If Erlang or
+  Elixir is changed (including changing directories) without their versions
+  changing, the next consistency check for each project and build environment
+  will take longer as the PLT will need to be updated.
+
+  For more information on `dialyzer` and success typing see:
+  `http://www.erlang.org/doc/apps/dialyzer/index.html`
+  """
+
+  @shortdoc "Analyse the current mix project using success typing"
 
   @warnings [:unmatched_returns, :error_handling, :race_conditions, :underspecs]
 
+  @spec run(OptionParser.argv) :: :ok
   def run(args) do
     {make, prepare, analysis, warnings} = parse_args(args)
     info("Finding applications for analysis")

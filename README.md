@@ -3,18 +3,17 @@ Mix.Task.Dialyze
 
 Install
 -------
-
-For Elixir >= 0.14.3
+Adds as a dependency:
+```elixir
+defp deps() do
+  # It is likely to only desire dialyze for the `:dev` build environment,
+  # and not for `:prod` and other build environments.
+  [{:dialyze, "~> 0.1.0", only: [:dev]}]
+end
 ```
-git clone https://github.com/fishcakez/dialyze.git
-cd dialyze
-mix install
+Fetch and compile:
 ```
-For Elixir < 0.14.3
-```
-git clone https://github.com/fishcakez/dialyze.git
-cd dialyze
-mix do compile, archive, local.install --force
+mix do deps.get, deps.compile
 ```
 
 Usage

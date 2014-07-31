@@ -6,9 +6,7 @@ Install
 Add as a dependency:
 ```elixir
 defp deps() do
-  # It is likely to only desire dialyze for the `:dev` build environment,
-  # and not for `:prod` and other build environments.
-  [{:dialyze, "~> 0.1.1", only: [:dev]}]
+  [{:dialyze, "~> 0.1.1"}]
 end
 ```
 Fetch and compile:

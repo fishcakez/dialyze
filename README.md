@@ -3,7 +3,7 @@ Mix.Task.Dialyze
 
 Install
 -------
-Adds as a dependency:
+Add as a dependency:
 ```elixir
 defp deps() do
   # It is likely to only desire dialyze for the `:dev` build environment,

@@ -8,7 +8,7 @@ Add as a dependency:
 defp deps() do
   # It is likely to only desire dialyze for the `:dev` build environment,
   # and not for `:prod` and other build environments.
-  [{:dialyze, "~> 0.1.0", only: [:dev]}]
+  [{:dialyze, "~> 0.1.1", only: [:dev]}]
 end
 ```
 Fetch and compile:

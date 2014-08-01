@@ -57,6 +57,8 @@ defmodule Mix.Tasks.Dialyze do
 
   @shortdoc "Analyse the current mix project using success typing"
 
+  use Mix.Task
+
   @warnings [:unmatched_returns, :error_handling, :race_conditions, :underspecs]
 
   @spec run(OptionParser.argv) :: :ok

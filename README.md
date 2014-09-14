@@ -18,7 +18,7 @@ Or install as archive:
 ```
 git clone https://github.com/fishcakez/dialyze.git
 cd dialyze
-mix installi
+mix install
 ```
 
 Usage

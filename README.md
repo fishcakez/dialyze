@@ -6,12 +6,19 @@ Install
 Add as a dependency:
 ```elixir
 defp deps() do
-  [{:dialyze, "~> 0.1.2"}]
+  [{:dialyze, "~> 0.1.3"}]
 end
 ```
 Fetch and compile:
 ```
 mix do deps.get, deps.compile
+```
+
+Or install as archive:
+```
+git clone https://github.com/fishcakez/dialyze.git
+cd dialyze
+mix installi
 ```
 
 Usage

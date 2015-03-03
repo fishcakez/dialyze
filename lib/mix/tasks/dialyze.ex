@@ -347,12 +347,13 @@ defmodule Mix.Tasks.Dialyze do
 
   defp check_beams(plt, beams, old_beams, _prev_plt) do
     check_beams(plt, beams, old_beams)
-    plt_check(plt, beams)
   end
 
   defp check_beams(plt, beams, old_beams) do
     remove = HashSet.difference(old_beams, beams)
     plt_remove(plt, remove)
+    check = HashSet.intersection(beams, old_beams)
+    plt_check(plt, check)
     add = HashSet.difference(beams, old_beams)
     plt_add(plt, add)
   end
@@ -363,7 +364,7 @@ defmodule Mix.Tasks.Dialyze do
   defp plt_new(plt) do
     info("Creating #{Path.basename(plt)}")
     plt = erl_path(plt)
-    _ = :dialyzer.run([analysis_type: :plt_build, output_plt: plt,
+    _ = plt_run([analysis_type: :plt_build, output_plt: plt,
       apps: [:erts]])
     :ok
   end
@@ -381,7 +382,7 @@ defmodule Mix.Tasks.Dialyze do
         (Mix.shell()).info("Adding #{n} modules to #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = erl_files(files)
-        _ = :dialyzer.run([analysis_type: :plt_add, init_plt: plt,
+        _ = plt_run([analysis_type: :plt_add, init_plt: plt,
           files: files])
         :ok
     end
@@ -395,7 +396,7 @@ defmodule Mix.Tasks.Dialyze do
         info("Removing #{n} modules from #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = erl_files(files)
-        _ = :dialyzer.run([analysis_type: :plt_remove, init_plt: plt,
+        _ = plt_run([analysis_type: :plt_remove, init_plt: plt,
           files: files])
         :ok
     end
@@ -408,7 +409,7 @@ defmodule Mix.Tasks.Dialyze do
       n ->
         (Mix.shell()).info("Checking #{n} modules in #{Path.basename(plt)}")
         plt = erl_path(plt)
-        _ = :dialyzer.run([analysis_type: :plt_check, init_plt: plt])
+        _ = plt_run([analysis_type: :plt_check, init_plt: plt])
         :ok
     end
   end
@@ -421,9 +422,13 @@ defmodule Mix.Tasks.Dialyze do
         info("Analysing #{n} modules with #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = Enum.map(files, &erl_path/1)
-        :dialyzer.run([analysis_type: :succ_typings, plts: [plt], files: files,
+        plt_run([analysis_type: :succ_typings, plts: [plt], files: files,
           warnings: warnings])
     end
+  end
+
+  defp plt_run(opts) do
+    :dialyzer.run([check_plt: false] ++ opts)
   end
 
   defp plt_info(plt) do

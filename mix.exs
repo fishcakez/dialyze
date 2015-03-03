@@ -3,7 +3,7 @@ defmodule Dialyze.Mixfile do
 
   def project do
     [app: :dialyze,
-     version: "0.1.3",
+     version: "0.1.4",
      elixir: "~> 0.14.3 or ~> 0.15.0 or ~> 1.0.0 or ~> 1.1.0-dev",
      description: "Dialyzer mix task",
      deps: [],

@@ -147,7 +147,7 @@ defmodule Mix.Tasks.Dialyze do
 
   defp plts_list(deps) do
     [{deps_plt(), deps}, {elixir_plt(), [:elixir]},
-      {erlang_plt(), [:erts, :kernel, :stdlib]}]
+      {erlang_plt(), [:erts, :kernel, :stdlib, :crypto]}]
   end
 
   defp erlang_plt(), do: global_plt("erlang-" <> otp_vsn())
@@ -267,15 +267,10 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp resolve_apps(apps, cache) do
-    apps = Enum.uniq(apps)
-    case Enum.filter_map(apps, &(not Map.has_key?(cache, &1)), &app_info/1) do
-      [] ->
-        cache
-      infos ->
-        cache = Enum.into(infos, cache)
-        deps = Enum.flat_map(infos, fn({_app, {_mods, deps}}) -> deps end)
-        resolve_apps(deps, cache)
-    end
+    apps
+    |> Enum.uniq()
+    |> Enum.filter_map(&(not Map.has_key?(cache, &1)), &app_info/1)
+    |> Enum.into(cache)
   end
 
   defp app_info(app) do

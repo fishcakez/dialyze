@@ -51,6 +51,13 @@ defmodule Mix.Tasks.Dialyze do
   changing, the next consistency check for each project and build environment
   will take longer as the PLT will need to be updated.
 
+  The default warning flags are:
+
+      --return --unused --improper-lists --fun-app --match --opaque
+      --fail-call --contracts --behaviours --undefined-callbacks
+      --no-unmatched-returns --no-error-handling --no-race-conditions
+      --no-overspecs --no-underspecs, --no-unknown --no-overspecs --no-specdiffs
+
   For more information on `dialyzer` and success typing see:
   `http://www.erlang.org/doc/apps/dialyzer/index.html`
   """
@@ -59,7 +66,10 @@ defmodule Mix.Tasks.Dialyze do
 
   use Mix.Task
 
-  @warnings [:unmatched_returns, :error_handling, :race_conditions, :underspecs]
+  @no_warnings [:return, :unused, :improper_lists, :fun_app,
+    :match, :opaque, :fail_call, :contracts, :behaviours, :undefined_callbacks]
+  @warnings [:unmatched_returns, :error_handling, :race_conditions, :overspecs,
+    :underspecs, :unknown, :overspecs, :specdiffs]
 
   @spec run(OptionParser.argv) :: :ok
   def run(args) do
@@ -79,7 +89,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp parse_args(args) do
-    warn_switches = Enum.map(@warnings, &{&1, :boolean})
+    warn_switches = Enum.map(@no_warnings ++ @warnings, &{&1, :boolean})
     switches = [compile: :boolean, check: :boolean, analyse: :boolean] ++
       warn_switches
     {opts, _, _} = OptionParser.parse(args, [strict: switches])
@@ -108,7 +118,10 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp warnings_list(opts) do
-    Enum.filter(@warnings, &Keyword.get(opts, &1, false))
+    warnings = Enum.filter(@warnings, &Keyword.get(opts, &1, false))
+    no_warnings = Enum.filter_map(@no_warnings,
+      &(not Keyword.get(opts, &1, true)), &String.to_atom("no_#{&1}"))
+    warnings ++ no_warnings
   end
 
   defp no_compile(), do: :ok

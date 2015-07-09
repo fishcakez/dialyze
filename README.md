@@ -6,7 +6,7 @@ Install
 Add as a dependency:
 ```elixir
 defp deps() do
-  [{:dialyze, "~> 0.1.4"}]
+  [{:dialyze, "~> 0.2.0"}]
 end
 ```
 Fetch and compile:

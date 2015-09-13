@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Dialyze do
   @moduledoc """
-  Analyse the current mix project using success typing.
+  Analyses the current Mix project using success typing.
 
   ## Examples
 
@@ -33,9 +33,9 @@ defmodule Mix.Tasks.Dialyze do
       mix deps.get
       # Possibly make changes to current application and then compile project
       mix compile
-      # Run dialyze for the first time to build a PLT and analyse
+      # Run Dialyze for the first time to build a PLT and analyse
       mix dialyze
-      # Fix dialyzer warnings and analyse again (assuming same build
+      # Fix Dialyzer warnings and analyse again (assuming same build
       # environment, Elixir version, Erlang version and deps)
       mix dialyze --no-check
 
@@ -62,7 +62,7 @@ defmodule Mix.Tasks.Dialyze do
   `http://www.erlang.org/doc/apps/dialyzer/index.html`
   """
 
-  @shortdoc "Analyse the current mix project using success typing"
+  @shortdoc "Analyses the current Mix project using success typing"
 
   use Mix.Task
 

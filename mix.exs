@@ -3,7 +3,7 @@ defmodule Dialyze.Mixfile do
 
   def project do
     [app: :dialyze,
-     version: "0.2.0",
+     version: "0.2.1",
      elixir: "~> 0.14.3 or ~> 0.15.0 or ~> 1.0",
      description: "Dialyzer Mix task",
      deps: [],
@@ -17,7 +17,7 @@ defmodule Dialyze.Mixfile do
 
   defp package() do
     [files: ["lib", "mix.exs", "README.md", "LICENSE"],
-      contributors: ["James Fish"],
+      maintainers: ["James Fish"],
       licenses: ["Apache 2.0"],
       links: %{"Github" => "https://github.com/fishcakez/dialyze"}]
   end

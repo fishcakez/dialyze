@@ -80,8 +80,10 @@ defmodule Mix.Tasks.Dialyze do
       {plt, plt_beams} = ( plts_list(deps) |> prepare.() )
       analysis.(plt, mods, plt_beams, warnings)
     else
-      warnings ->
+      [] -> :ok
+      [_|_] = warnings ->
         print_warnings(warnings)
+        Mix.raise "Dialyzer reported #{length(warnings)} warnings"
     catch
       :throw, {:dialyzer_error, reason} ->
         Mix.raise "Dialyzer error: " <> IO.chardata_to_string(reason)

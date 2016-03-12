@@ -82,7 +82,9 @@ defmodule Mix.Tasks.Dialyze do
     else
       warnings ->
         print_warnings(warnings)
-        if (match?([_|_], warnings)), do: System.halt(1)
+        if (match?([_|_], warnings)) do
+          Mix.raise "Dialyzer reported #{length(warnings)} warnings"
+        end
     catch
       :throw, {:dialyzer_error, reason} ->
         Mix.raise "Dialyzer error: " <> IO.chardata_to_string(reason)

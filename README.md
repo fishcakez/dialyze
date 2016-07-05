@@ -1,6 +1,8 @@
 Mix.Task.Dialyze
 ================
 
+This project is no longer maintained, please consider using/contributing to https://github.com/jeremyjh/dialyxir.
+
 Install
 -------
 Add as a dependency:

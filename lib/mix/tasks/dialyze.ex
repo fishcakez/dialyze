@@ -71,6 +71,9 @@ defmodule Mix.Tasks.Dialyze do
   @warnings [:unmatched_returns, :error_handling, :race_conditions, :overspecs,
     :underspecs, :unknown, :overspecs, :specdiffs]
 
+  @erlang_apps [:erts, :kernel, :stdlib, :crypto]
+  @elixir_apps [:elixir]
+
   @spec run(OptionParser.argv) :: :ok
   def run(args) do
     {make, prepare, analysis, warnings} = parse_args(args)
@@ -134,9 +137,29 @@ defmodule Mix.Tasks.Dialyze do
     infos = app_info_list(make)
     apps = Keyword.keys(infos)
     mods = Enum.flat_map(infos, fn({_, {mods, _deps}}) -> mods end)
-    deps = Enum.flat_map(infos, fn({_, {_mods, deps}}) -> deps end)
-    # Ensure apps not in deps.
-    {mods, Enum.uniq(deps) -- apps}
+    deps =
+      Enum.flat_map(infos, fn({_, {_mods, deps}}) -> deps end)
+      |> expand_deps
+      |> Enum.to_list
+      |> Kernel.--([apps]) # Ensure apps not in deps.
+
+    {mods, deps}
+  end
+
+  defp expand_deps(deps, visited_deps \\ HashSet.new) do
+    Enum.reduce(deps, visited_deps, &expand_dep/2)
+  end
+
+  # Ensure Erlang/Elixir apps are not in expanded deps
+  defp expand_dep(dep, visited_deps) when dep in unquote(@erlang_apps ++ @elixir_apps),
+    do: visited_deps
+  defp expand_dep(dep, visited_deps) do
+    case HashSet.member?(visited_deps, dep) do
+      true -> visited_deps
+      false ->
+        {^dep, {_mods, deps}} = app_info(dep)
+        expand_deps(deps, HashSet.put(visited_deps, dep))
+    end
   end
 
   defp app_info_list(make) do
@@ -161,8 +184,8 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plts_list(deps) do
-    [{deps_plt(), deps}, {elixir_plt(), [:elixir]},
-      {erlang_plt(), [:erts, :kernel, :stdlib, :crypto]}]
+    [{deps_plt(), deps}, {elixir_plt(), @elixir_apps},
+      {erlang_plt(), @erlang_apps}]
   end
 
   defp erlang_plt(), do: global_plt("erlang-" <> otp_vsn())

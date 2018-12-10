@@ -66,35 +66,55 @@ defmodule Mix.Tasks.Dialyze do
 
   use Mix.Task
 
-  @no_warnings [:return, :unused, :improper_lists, :fun_app,
-    :match, :opaque, :fail_call, :contracts, :behaviours, :undefined_callbacks]
-  @warnings [:unmatched_returns, :error_handling, :race_conditions, :overspecs,
-    :underspecs, :unknown, :overspecs, :specdiffs]
+  @no_warnings [
+    :return,
+    :unused,
+    :improper_lists,
+    :fun_app,
+    :match,
+    :opaque,
+    :fail_call,
+    :contracts,
+    :behaviours,
+    :undefined_callbacks
+  ]
+  @warnings [
+    :unmatched_returns,
+    :error_handling,
+    :race_conditions,
+    :overspecs,
+    :underspecs,
+    :unknown,
+    :overspecs,
+    :specdiffs
+  ]
 
-  @spec run(OptionParser.argv) :: :ok
+  @spec run(OptionParser.argv()) :: :ok
   def run(args) do
     {make, prepare, analysis, warnings} = parse_args(args)
     info("Finding applications for analysis")
     {mods, deps} = get_info(make)
+
     try do
-      {plt, plt_beams} = ( plts_list(deps) |> prepare.() )
+      {plt, plt_beams} = plts_list(deps) |> prepare.()
       analysis.(plt, mods, plt_beams, warnings)
     else
-      [] -> :ok
-      [_|_] = warnings ->
+      [] ->
+        :ok
+
+      [_ | _] = warnings ->
         print_warnings(warnings)
-        Mix.raise "Dialyzer reported #{length(warnings)} warnings"
+        Mix.raise("Dialyzer reported #{length(warnings)} warnings")
     catch
       :throw, {:dialyzer_error, reason} ->
-        Mix.raise "Dialyzer error: " <> IO.chardata_to_string(reason)
+        Mix.raise("Dialyzer error: " <> IO.chardata_to_string(reason))
     end
   end
 
   defp parse_args(args) do
     warn_switches = Enum.map(@no_warnings ++ @warnings, &{&1, :boolean})
-    switches = [compile: :boolean, check: :boolean, analyse: :boolean] ++
-      warn_switches
-    {opts, _, _} = OptionParser.parse(args, [strict: switches])
+    switches = [compile: :boolean, check: :boolean, analyse: :boolean] ++ warn_switches
+    {opts, _, _} = OptionParser.parse(args, strict: switches)
     {make_fun(opts), prepare_fun(opts), analysis_fun(opts), warnings_list(opts)}
   end
 
@@ -121,8 +141,14 @@ defmodule Mix.Tasks.Dialyze do
 
   defp warnings_list(opts) do
     warnings = Enum.filter(@warnings, &Keyword.get(opts, &1, false))
-    no_warnings = Enum.filter_map(@no_warnings,
-      &(not Keyword.get(opts, &1, true)), &String.to_atom("no_#{&1}"))
+
+    no_warnings =
+      Enum.filter_map(
+        @no_warnings,
+        &(not Keyword.get(opts, &1, true)),
+        &String.to_atom("no_#{&1}")
+      )
+
     warnings ++ no_warnings
   end
 
@@ -133,8 +159,8 @@ defmodule Mix.Tasks.Dialyze do
   defp get_info(make) do
     infos = app_info_list(make)
     apps = Keyword.keys(infos)
-    mods = Enum.flat_map(infos, fn({_, {mods, _deps}}) -> mods end)
-    deps = Enum.flat_map(infos, fn({_, {_mods, deps}}) -> deps end)
+    mods = Enum.flat_map(infos, fn {_, {mods, _deps}} -> mods end)
+    deps = Enum.flat_map(infos, fn {_, {_mods, deps}} -> deps end)
     # Ensure apps not in deps.
     {mods, Enum.uniq(deps) -- apps}
   end
@@ -148,21 +174,26 @@ defmodule Mix.Tasks.Dialyze do
 
   defp get_umbrella_info(make) do
     config = [build_path: Mix.Project.build_path()]
+
     for %Mix.Dep{app: app, opts: opts} <- Mix.Dep.Umbrella.loaded() do
       path = opts[:path]
-      Mix.Project.in_project(app, path, config, fn(_) -> get_app_info(make) end)
+      Mix.Project.in_project(app, path, config, fn _ -> get_app_info(make) end)
     end
   end
 
   defp get_app_info(make) do
     make.()
+
     Keyword.fetch!(Mix.Project.config(), :app)
-      |> app_info()
+    |> app_info()
   end
 
   defp plts_list(deps) do
-    [{deps_plt(), deps}, {elixir_plt(), [:elixir]},
-      {erlang_plt(), [:erts, :kernel, :stdlib, :crypto]}]
+    [
+      {deps_plt(), deps},
+      {elixir_plt(), [:elixir]},
+      {erlang_plt(), [:erts, :kernel, :stdlib, :crypto]}
+    ]
   end
 
   defp erlang_plt(), do: global_plt("erlang-" <> otp_vsn())
@@ -170,12 +201,14 @@ defmodule Mix.Tasks.Dialyze do
   defp otp_vsn() do
     major = :erlang.system_info(:otp_release)
     vsn_file = Path.join([:code.root_dir(), "releases", major, "OTP_VERSION"])
+
     try do
       {:ok, contents} = File.read(vsn_file)
       String.split(contents, "\n", trim: true)
     else
       [full] ->
         full
+
       _ ->
         major
     catch
@@ -195,6 +228,7 @@ defmodule Mix.Tasks.Dialyze do
 
   defp build_env() do
     config = Mix.Project.config()
+
     case Keyword.fetch!(config, :build_per_environment) do
       true -> Atom.to_string(Mix.env())
       false -> "shared"
@@ -215,19 +249,21 @@ defmodule Mix.Tasks.Dialyze do
     info("Finding modules for analysis")
     beams = resolve_modules(mods, HashSet.new())
     clashes = HashSet.intersection(beams, plt_beams)
+
     case HashSet.size(clashes) do
       0 ->
         plt_analyse(plt, beams, warnings)
+
       _ ->
-        Mix.raise "Clashes with plt: " <>
-          inspect(HashSet.to_list(clashes))
+        Mix.raise("Clashes with plt: " <> inspect(HashSet.to_list(clashes)))
     end
   end
 
   defp no_check([{plt, _apps} | _plts]) do
     case plt_files(plt) do
       nil ->
-        Mix.raise "Could not open #{plt}: #{:file.format_error(:enoent)}"
+        Mix.raise("Could not open #{plt}: #{:file.format_error(:enoent)}")
+
       beams ->
         {plt, beams}
     end
@@ -242,8 +278,9 @@ defmodule Mix.Tasks.Dialyze do
     case plt_files(plt) do
       nil ->
         find_plts(plts, [{plt, apps, nil} | acc])
+
       beams ->
-        apps_rest = Enum.flat_map(plts, fn({_plt2, apps2}) -> apps2 end)
+        apps_rest = Enum.flat_map(plts, fn {_plt2, apps2} -> apps2 end)
         apps = Enum.uniq(apps ++ apps_rest)
         check_plts([{plt, apps, beams} | acc])
     end
@@ -254,10 +291,11 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp check_plts(plts) do
-    {last_plt, beams, _cache} = Enum.reduce(plts, {nil, HashSet.new(), %{}},
-      fn({plt, apps, beams}, acc) ->
+    {last_plt, beams, _cache} =
+      Enum.reduce(plts, {nil, HashSet.new(), %{}}, fn {plt, apps, beams}, acc ->
         check_plt(plt, apps, beams, acc)
       end)
+
     {last_plt, beams}
   end
 
@@ -272,13 +310,15 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp cache_mod_diff(new, old) do
-    Enum.flat_map(new,
-      fn({app, {mods, _deps}}) ->
+    Enum.flat_map(
+      new,
+      fn {app, {mods, _deps}} ->
         case Map.has_key?(old, app) do
           true -> []
           false -> mods
         end
-      end)
+      end
+    )
   end
 
   defp resolve_apps(apps, cache) do
@@ -290,10 +330,12 @@ defmodule Mix.Tasks.Dialyze do
 
   defp app_info(app) do
     app_file = Atom.to_char_list(app) ++ '.app'
+
     case :code.where_is_file(app_file) do
       :non_existing ->
         error("Unknown application #{inspect(app)}")
         {app, {[], []}}
+
       app_file ->
         Path.expand(app_file)
         |> read_app_info(app)
@@ -304,8 +346,9 @@ defmodule Mix.Tasks.Dialyze do
     case :file.consult(app_file) do
       {:ok, [{:application, ^app, info}]} ->
         parse_app_info(info, app)
+
       {:error, reason} ->
-        Mix.raise "Could not read #{app_file}: #{:file.format_error(reason)}"
+        Mix.raise("Could not read #{app_file}: #{:file.format_error(reason)}")
     end
   end
 
@@ -324,8 +367,8 @@ defmodule Mix.Tasks.Dialyze do
 
   defp parse_runtime_dep(runtime_dep) do
     runtime_dep = IO.chardata_to_string(runtime_dep)
-    regex =  ~r/^(.+)\-\d+(?|\.\d+)*$/
-    [app] = Regex.run(regex, runtime_dep, [capture: :all_but_first])
+    regex = ~r/^(.+)\-\d+(?|\.\d+)*$/
+    [app] = Regex.run(regex, runtime_dep, capture: :all_but_first)
     String.to_atom(app)
   end
 
@@ -335,10 +378,12 @@ defmodule Mix.Tasks.Dialyze do
 
   defp resolve_module(module, beams) do
     beam = Atom.to_char_list(module) ++ '.beam'
+
     case :code.where_is_file(beam) do
       path when is_list(path) ->
         path = Path.expand(path)
         HashSet.put(beams, path)
+
       :non_existing ->
         error("Unknown module #{inspect(module)}")
         beams
@@ -347,9 +392,11 @@ defmodule Mix.Tasks.Dialyze do
 
   defp check_beams(plt, beams, nil, prev_plt) do
     plt_ensure(plt, prev_plt)
+
     case plt_files(plt) do
       nil ->
         Mix.raise("Could not open #{plt}: #{:file.format_error(:enoent)}")
+
       old_beams ->
         check_beams(plt, beams, old_beams)
     end
@@ -374,8 +421,7 @@ defmodule Mix.Tasks.Dialyze do
   defp plt_new(plt) do
     info("Creating #{Path.basename(plt)}")
     plt = erl_path(plt)
-    _ = plt_run([analysis_type: :plt_build, output_plt: plt,
-      apps: [:erts]])
+    _ = plt_run(analysis_type: :plt_build, output_plt: plt, apps: [:erts])
     :ok
   end
 
@@ -388,12 +434,12 @@ defmodule Mix.Tasks.Dialyze do
     case HashSet.size(files) do
       0 ->
         :ok
+
       n ->
-        (Mix.shell()).info("Adding #{n} modules to #{Path.basename(plt)}")
+        Mix.shell().info("Adding #{n} modules to #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = erl_files(files)
-        _ = plt_run([analysis_type: :plt_add, init_plt: plt,
-          files: files])
+        _ = plt_run(analysis_type: :plt_add, init_plt: plt, files: files)
         :ok
     end
   end
@@ -402,12 +448,12 @@ defmodule Mix.Tasks.Dialyze do
     case HashSet.size(files) do
       0 ->
         :ok
+
       n ->
         info("Removing #{n} modules from #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = erl_files(files)
-        _ = plt_run([analysis_type: :plt_remove, init_plt: plt,
-          files: files])
+        _ = plt_run(analysis_type: :plt_remove, init_plt: plt, files: files)
         :ok
     end
   end
@@ -416,10 +462,11 @@ defmodule Mix.Tasks.Dialyze do
     case HashSet.size(files) do
       0 ->
         :ok
+
       n ->
-        (Mix.shell()).info("Checking #{n} modules in #{Path.basename(plt)}")
+        Mix.shell().info("Checking #{n} modules in #{Path.basename(plt)}")
         plt = erl_path(plt)
-        _ = plt_run([analysis_type: :plt_check, init_plt: plt])
+        _ = plt_run(analysis_type: :plt_check, init_plt: plt)
         :ok
     end
   end
@@ -428,12 +475,12 @@ defmodule Mix.Tasks.Dialyze do
     case HashSet.size(files) do
       0 ->
         []
+
       n ->
         info("Analysing #{n} modules with #{Path.basename(plt)}")
         plt = erl_path(plt)
         files = Enum.map(files, &erl_path/1)
-        plt_run([analysis_type: :succ_typings, plts: [plt], files: files,
-          warnings: warnings])
+        plt_run(analysis_type: :succ_typings, plts: [plt], files: files, warnings: warnings)
     end
   end
 
@@ -447,7 +494,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp erl_files(files) do
-    Enum.reduce(files, [], &[erl_path(&1)|&2])
+    Enum.reduce(files, [], &[erl_path(&1) | &2])
   end
 
   defp erl_path(path) do
@@ -457,22 +504,27 @@ defmodule Mix.Tasks.Dialyze do
 
   defp plt_files(plt) do
     info("Looking up modules in #{Path.basename(plt)}")
+
     case plt_info(plt) do
       {:ok, info} ->
         Keyword.fetch!(info, :files)
         |> Enum.reduce(HashSet.new(), &HashSet.put(&2, Path.expand(&1)))
+
       {:error, :no_such_file} ->
         nil
+
       {:error, reason} ->
         Mix.raise("Could not open #{plt}: #{:file.format_error(reason)}")
     end
   end
 
   defp print_warnings(warnings) do
-    _ = for warning <- warnings do
-      _ = error(format_warning(warning))
-      :ok
-    end
+    _ =
+      for warning <- warnings do
+        _ = error(format_warning(warning))
+        :ok
+      end
+
     :ok
   end
 
@@ -484,5 +536,4 @@ defmodule Mix.Tasks.Dialyze do
   defp info(msg), do: apply(Mix.shell(), :info, [msg])
 
   defp error(msg), do: apply(Mix.shell(), :error, [msg])
-
 end

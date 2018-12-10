@@ -121,8 +121,7 @@ defmodule Mix.Tasks.Dialyze do
 
   defp warnings_list(opts) do
     warnings = Enum.filter(@warnings, &Keyword.get(opts, &1, false))
-    no_warnings = Enum.filter_map(@no_warnings,
-      &(not Keyword.get(opts, &1, true)), &String.to_atom("no_#{&1}"))
+    no_warnings = Enum.filter(@no_warnings, &(not Keyword.get(opts, &1, true))) |> Enum.map( &String.to_atom("no_#{&1}"))
     warnings ++ no_warnings
   end
 
@@ -213,14 +212,14 @@ defmodule Mix.Tasks.Dialyze do
 
   defp analyse(plt, mods, plt_beams, warnings) do
     info("Finding modules for analysis")
-    beams = resolve_modules(mods, HashSet.new())
-    clashes = HashSet.intersection(beams, plt_beams)
-    case HashSet.size(clashes) do
+    beams = resolve_modules(mods, MapSet.new())
+    clashes = MapSet.intersection(beams, plt_beams)
+    case MapSet.size(clashes) do
       0 ->
         plt_analyse(plt, beams, warnings)
       _ ->
         Mix.raise "Clashes with plt: " <>
-          inspect(HashSet.to_list(clashes))
+          inspect(MapSet.to_list(clashes))
     end
   end
 
@@ -254,7 +253,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp check_plts(plts) do
-    {last_plt, beams, _cache} = Enum.reduce(plts, {nil, HashSet.new(), %{}},
+    {last_plt, beams, _cache} = Enum.reduce(plts, {nil, MapSet.new(), %{}},
       fn({plt, apps, beams}, acc) ->
         check_plt(plt, apps, beams, acc)
       end)
@@ -284,12 +283,13 @@ defmodule Mix.Tasks.Dialyze do
   defp resolve_apps(apps, cache) do
     apps
     |> Enum.uniq()
-    |> Enum.filter_map(&(not Map.has_key?(cache, &1)), &app_info/1)
+    |> Enum.filter(&(not Map.has_key?(cache, &1)))
+    |> Enum.map(&app_info/1)
     |> Enum.into(cache)
   end
 
   defp app_info(app) do
-    app_file = Atom.to_char_list(app) ++ '.app'
+    app_file = Atom.to_charlist(app) ++ '.app'
     case :code.where_is_file(app_file) do
       :non_existing ->
         error("Unknown application #{inspect(app)}")
@@ -334,11 +334,11 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp resolve_module(module, beams) do
-    beam = Atom.to_char_list(module) ++ '.beam'
+    beam = Atom.to_charlist(module) ++ '.beam'
     case :code.where_is_file(beam) do
       path when is_list(path) ->
         path = Path.expand(path)
-        HashSet.put(beams, path)
+        MapSet.put(beams, path)
       :non_existing ->
         error("Unknown module #{inspect(module)}")
         beams
@@ -360,11 +360,11 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp check_beams(plt, beams, old_beams) do
-    remove = HashSet.difference(old_beams, beams)
+    remove = MapSet.difference(old_beams, beams)
     plt_remove(plt, remove)
-    check = HashSet.intersection(beams, old_beams)
+    check = MapSet.intersection(beams, old_beams)
     plt_check(plt, check)
-    add = HashSet.difference(beams, old_beams)
+    add = MapSet.difference(beams, old_beams)
     plt_add(plt, add)
   end
 
@@ -385,7 +385,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_add(plt, files) do
-    case HashSet.size(files) do
+    case MapSet.size(files) do
       0 ->
         :ok
       n ->
@@ -399,7 +399,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_remove(plt, files) do
-    case HashSet.size(files) do
+    case MapSet.size(files) do
       0 ->
         :ok
       n ->
@@ -413,7 +413,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_check(plt, files) do
-    case HashSet.size(files) do
+    case MapSet.size(files) do
       0 ->
         :ok
       n ->
@@ -425,7 +425,7 @@ defmodule Mix.Tasks.Dialyze do
   end
 
   defp plt_analyse(plt, files, warnings) do
-    case HashSet.size(files) do
+    case MapSet.size(files) do
       0 ->
         []
       n ->
@@ -460,7 +460,7 @@ defmodule Mix.Tasks.Dialyze do
     case plt_info(plt) do
       {:ok, info} ->
         Keyword.fetch!(info, :files)
-        |> Enum.reduce(HashSet.new(), &HashSet.put(&2, Path.expand(&1)))
+        |> Enum.reduce(MapSet.new(), &MapSet.put(&2, Path.expand(&1)))
       {:error, :no_such_file} ->
         nil
       {:error, reason} ->
